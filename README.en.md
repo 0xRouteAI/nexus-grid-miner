@@ -114,7 +114,7 @@ flowchart TB
 
 - **Outbound only**: the agent dials out; your machine exposes no port.
 - **Inference is offline**: TEI sits on a network with no route to the internet, so it cannot quietly forward requests to another AI service and pretend to compute. The network also spot-checks results, and cheating wallets are banned as a whole.
-- **The wallet only signs**: the private key signs a registration message on each connect to prove the wallet is yours. It never sends a transaction and needs no funds.
+- **The wallet only signs**: the private key signs a registration message on each connect to prove the wallet is yours. It never sends a transaction and needs no funds. Use a new EVM wallet.
 
 ---
 
@@ -125,8 +125,17 @@ flowchart TB
 - An NVIDIA GPU: RTX 20 series or newer, 8 GB+ VRAM.
 - NVIDIA drivers (CUDA 12.2 or newer) and the [NVIDIA Container Toolkit](https://docs.nvidia.com/datacenter/cloud-native/container-toolkit/latest/install-guide.html).
 - Docker and Docker Compose v2.
-- A **dedicated** wallet address and its private key. Do not use a wallet that holds funds.
+- A **new, dedicated EVM wallet** (see [About the wallet](#about-the-wallet)).
 - The network's domain, e.g. `nexus.example.com`.
+
+### About the wallet
+
+A node needs an **EVM wallet**: an Ethereum-style address starting with `0x`. Any EVM wallet works (MetaMask, Rabby, OKX Wallet, ...).
+
+- **The private key is only used for signing**: on every connect the node signs a registration message to prove the wallet is yours. **It never sends a transaction, never touches any assets, and the wallet needs no funds**; no chain needs to be selected.
+- **Create a new wallet for this**: add a new account in your wallet app and export its private key into `.env`. **Never use a wallet that holds assets**: the key is stored in plain text on this machine.
+- **Points are tied to this address**: log in to the miner dashboard with the same wallet to see your nodes, tasks and points.
+- **Protect `.env`**: never upload, screenshot or share it. On Linux run `chmod 600 .env` so only you can read it.
 
 ### 1. Download and configure
 
@@ -149,8 +158,8 @@ TEI_IMAGE=ghcr.io/huggingface/text-embeddings-inference:89-1.10
 | Value | Meaning |
 |---|---|
 | `SERVER_URL` | the network's domain is enough |
-| `WALLET` | points are credited to this address |
-| `MINER_PRIVATE_KEY` | registration signing only; never commit or share it |
+| `WALLET` | the new EVM wallet address (starts with `0x`); points are credited here |
+| `MINER_PRIVATE_KEY` | that wallet's private key, **used only for signing**, never for transactions; never commit or share it |
 | `COMPOSE_PROFILES` | **the one model this GPU serves**: `bge-m3` or `bge-reranker-v2-m3` |
 | `TEI_IMAGE` | **must match your GPU**, see the table |
 
