@@ -35,7 +35,7 @@ type Engine struct {
 
 // New probes exact model routes (in real mode) and keeps the healthy ones.
 // Adverts normally come from the server catalog; when omitted the agent
-// falls back to the launch models selected by ENABLED_MODELS at version 1.0.0.
+// falls back to the launch model selected by MODEL at version 1.0.0.
 // An agent with no healthy route is a hard error.
 func New(ctx context.Context, cfg *config.Config, adverts ...protocol.ModelAdvert) (*Engine, error) {
 	timeoutSecs := cfg.InferenceTimeoutSecs

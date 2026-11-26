@@ -1,6 +1,6 @@
 // Package catalogclient discovers the model catalog the server
 // publishes. The agent advertises only versions it can actually serve: present
-// in ENABLED_MODELS, registered in the catalog, and small enough for this GPU.
+// as MODEL, registered in the catalog, and small enough for this GPU.
 package catalogclient
 
 import (

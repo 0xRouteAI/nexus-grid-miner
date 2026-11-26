@@ -4,6 +4,7 @@
 > 代码里的消息结构在 `agent-go/internal/protocol`，与本文件保持一致。
 
 当前协议版本 `protocol_version = 2`，支持的模型 `bge-m3@1.0.0`（embedding）、`bge-reranker-v2-m3@1.0.0`（rerank）。
+**一个节点 = 一张显卡 + 一个模型**：agent 只注册 `MODEL` 指定的那一个模型，填多个会拒绝启动。
 
 ---
 
@@ -77,12 +78,10 @@
   "wallet": "0x1234...5678",
   "gpu_model": "NVIDIA GeForce RTX 4090",
   "vram_mb": 24564,
-  "models": ["bge-m3", "bge-reranker-v2-m3"],
+  "models": ["bge-m3"],
   "model_versions": [
     {"slug": "bge-m3", "version": "1.0.0", "capability": "embedding",
-     "backend": "tei-embed", "model_ref": "BAAI/bge-m3"},
-    {"slug": "bge-reranker-v2-m3", "version": "1.0.0", "capability": "rerank",
-     "backend": "tei-rerank", "model_ref": "BAAI/bge-reranker-v2-m3"}
+     "backend": "tei-embed", "model_ref": "BAAI/bge-m3"}
   ],
   "agent_version": "0.1.0",
   "node_id": "gpu-box-01:12345678",
@@ -96,7 +95,7 @@
 |---|---|
 | `wallet` | `WALLET` |
 | `gpu_model` / `vram_mb` | `nvidia-smi`，或 `GPU_MODEL` / `VRAM_MB` |
-| `model_versions` | 模型目录（B）按 `ENABLED_MODELS` 和显存过滤，再去掉健康检查失败的 TEI |
+| `model_versions` | 模型目录（B）里 `MODEL` 对应的版本，按显存过滤，再去掉健康检查失败的 TEI；正常情况下只有一项 |
 | `models` | 同上的模型名列表（兼容字段） |
 | `agent_version` | `AGENT_VERSION` |
 | `node_id` | `NODE_ID`，默认 `<主机名>:<钱包后 8 位>` |
@@ -213,7 +212,7 @@ agent 读取的字段：
 }
 ```
 
-过滤规则：slug 在 `ENABLED_MODELS` 里，且 `min_vram_mb` ≤ 显存 − `VRAM_HEADROOM_MB`（默认 512）。
+过滤规则：slug 等于 `MODEL`，且 `min_vram_mb` ≤ 显存 − `VRAM_HEADROOM_MB`（默认 512）。
 目录有变化时，agent 自动断开并按新的模型集合重新注册，**不需要重启**。
 
 ---
@@ -239,9 +238,10 @@ agent 读取的字段：
 | `WALLET` | **必填** | 积分地址 |
 | `MINER_PRIVATE_KEY` | **必填** | `WALLET` 的私钥，只用于签名 |
 | `TEI_IMAGE` | **必填**（Docker 部署） | 和显卡匹配的 TEI 镜像，见 README 的对照表 |
-| `COMPOSE_PROFILES` | `rerank` | 含 `rerank` 时才启动重排序容器；8 GB 卡删掉 |
+| `COMPOSE_PROFILES` | **必填**（Docker 部署） | 这张卡跑的模型：`bge-m3` 或 `bge-reranker-v2-m3`，只能一个；只启动对应的推理容器，并作为 agent 的 `MODEL` |
+| `GPU_DEVICE` | `0` | 这个节点使用的显卡编号（`nvidia-smi` 序号）；多卡机器每张卡一个节点 |
 | `NODE_ID` | `<主机名>:<钱包后 8 位>` | 同一钱包的每台机器/每张卡各不相同；`[A-Za-z0-9-_.:]`，≤ 128 字节 |
-| `ENABLED_MODELS` | `bge-m3,bge-reranker-v2-m3` | 愿意服务的模型 |
+| `MODEL` | **必填**（不用 Docker 时） | 这张卡跑的唯一模型；Docker 部署由 `COMPOSE_PROFILES` 自动带入。旧变量 `ENABLED_MODELS` 只填一个模型时仍兼容 |
 | `GPU_MODEL` / `VRAM_MB` | 自动探测 | 探测失败时手动指定 |
 | `MAX_CONCURRENT_TASKS` | `4` | 1–32 |
 | `LOG_LEVEL` | `info` | `debug` / `info` / `warn` / `error` |

@@ -26,10 +26,28 @@ jobs:
       - run: go test -race ./...
 
   docker:
-    name: Docker image
+    name: Docker image and compose
     runs-on: ubuntu-latest
+    env:
+      TEI_IMAGE: ghcr.io/huggingface/text-embeddings-inference:89-1.10
     steps:
       - uses: actions/checkout@v4
-      - run: cp .env.example .env && docker compose config --quiet && docker compose build agent
-        env:
-          TEI_IMAGE: ghcr.io/huggingface/text-embeddings-inference:89-1.10
+      - run: cp .env.example .env
+      # Each model profile starts exactly its own inference container, and the
+      # agent serves the same model.
+      - name: Compose resolves for each model
+        run: |
+          for model in bge-m3 bge-reranker-v2-m3; do
+            services=$(COMPOSE_PROFILES=$model docker compose config --services | sort | tr '\n' ' ')
+            agent_model=$(COMPOSE_PROFILES=$model docker compose config --format json | jq -r '.services.agent.environment.MODEL')
+            echo "$model -> services: $services agent MODEL: $agent_model"
+            test "$agent_model" = "$model"
+            case $model in
+              bge-m3) test "$services" = "agent embeddings " ;;
+              bge-reranker-v2-m3) test "$services" = "agent reranker " ;;
+            esac
+            bootstrap=$(COMPOSE_PROFILES=$model docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml config --services | tr '\n' ' ')
+            echo "bootstrap -> $bootstrap"
+            if echo "$bootstrap" | grep -qw agent; then echo "agent must not start during bootstrap"; exit 1; fi
+          done
+      - run: COMPOSE_PROFILES=bge-m3 docker compose build agent

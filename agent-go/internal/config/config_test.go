@@ -19,13 +19,14 @@ func baseEnv() map[string]string {
 		"SERVER_URL":        "nexus.example.com",
 		"WALLET":            "0xTEST000000000000000000000000000000000001",
 		"MINER_PRIVATE_KEY": testKey,
+		"MODEL":             "bge-m3",
 	}
 }
 
 func TestFromEnvParsesAndClamps(t *testing.T) {
 	env := baseEnv()
 	for k, v := range map[string]string{
-		"ENABLED_MODELS":         "embedding,rerank",
+		"MODEL":                  "rerank",
 		"HEARTBEAT_SECS":         "1",  // clamp to 5
 		"MAX_CONCURRENT_TASKS":   "99", // clamp to 32
 		"INFERENCE_TIMEOUT_SECS": "1",  // clamp to 10
@@ -45,7 +46,7 @@ func TestFromEnvParsesAndClamps(t *testing.T) {
 	if cfg.CatalogURL != "https://nexus.example.com/api/catalog" {
 		t.Fatalf("catalog url = %q", cfg.CatalogURL)
 	}
-	if !reflect.DeepEqual(cfg.Enabled, []string{"bge-m3", "bge-reranker-v2-m3"}) {
+	if !reflect.DeepEqual(cfg.Enabled, []string{"bge-reranker-v2-m3"}) {
 		t.Fatalf("enabled = %v", cfg.Enabled)
 	}
 	if cfg.HeartbeatSecs != 5 || cfg.MaxConcurrentTasks != 32 || cfg.InferenceTimeoutSecs != 10 {
@@ -66,8 +67,11 @@ func TestFromEnvRejectsBadValues(t *testing.T) {
 		{"SERVER_URL": "ftp://nexus.example.com"},
 		{"WALLET": ""},
 		{"MINER_PRIVATE_KEY": ""},
-		{"ENABLED_MODELS": "not-a-model"},
-		{"ENABLED_MODELS": "bge-m3,kokoro"},
+		{"MODEL": ""},
+		{"MODEL": "not-a-model"},
+		{"MODEL": "bge-m3,kokoro"},
+		// One GPU serves one model.
+		{"MODEL": "bge-m3,bge-reranker-v2-m3"},
 	}
 	for _, override := range cases {
 		env := baseEnv()
@@ -125,15 +129,17 @@ func TestParseModelAliases(t *testing.T) {
 	}
 }
 
-func TestDefaultEnabledModelsAreLaunchModels(t *testing.T) {
-	setEnv(t, baseEnv())
+func TestLegacyEnabledModelsStillReadForOneModel(t *testing.T) {
+	env := baseEnv()
+	env["MODEL"] = ""
+	env["ENABLED_MODELS"] = "bge-m3"
+	setEnv(t, env)
 	cfg, err := FromEnv()
 	if err != nil {
 		t.Fatalf("FromEnv: %v", err)
 	}
-	want := []string{"bge-m3", "bge-reranker-v2-m3"}
-	if !reflect.DeepEqual(cfg.Enabled, want) {
-		t.Fatalf("default enabled = %v, want %v", cfg.Enabled, want)
+	if !reflect.DeepEqual(cfg.Enabled, []string{"bge-m3"}) {
+		t.Fatalf("enabled = %v", cfg.Enabled)
 	}
 	if cfg.TEIRerankURL() != "http://reranker:80/rerank" {
 		t.Fatalf("TEI rerank url = %q", cfg.TEIRerankURL())

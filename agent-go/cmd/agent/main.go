@@ -33,7 +33,7 @@ func discoverAdverts(ctx context.Context, cfg *config.Config, info gpu.Info) ([]
 	}
 	snapshot, err := catalogclient.Fetch(ctx, cfg.CatalogURL)
 	if err != nil {
-		slog.Warn("catalog fetch failed; falling back to ENABLED_MODELS",
+		slog.Warn("catalog fetch failed; falling back to the built-in MODEL version",
 			"url", cfg.CatalogURL, "err", err)
 		return catalogclient.DefaultAdverts(cfg.Enabled), nil
 	}
@@ -47,7 +47,7 @@ func discoverAdverts(ctx context.Context, cfg *config.Config, info gpu.Info) ([]
 	if len(adverts) == 0 {
 		return nil, fmt.Errorf(
 			"catalog revision %d has no model this GPU can serve (vram=%d, headroom=%d); "+
-				"check ENABLED_MODELS and MODEL_ENDPOINTS",
+				"check MODEL and MODEL_ENDPOINTS",
 			snapshot.Revision, info.VRAMMB, cfg.VRAMHeadroomMB)
 	}
 	return adverts, nil

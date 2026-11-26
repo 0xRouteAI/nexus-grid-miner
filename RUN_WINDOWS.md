@@ -6,10 +6,10 @@
 
 agent 本身不做推理，它把任务转给本机的
 [text-embeddings-inference](https://github.com/huggingface/text-embeddings-inference)（TEI）。
-在 Windows 上请按 TEI 官方文档启动两个服务，例如：
+**一张显卡只跑一个模型。** 在 Windows 上请按 TEI 官方文档启动你选的那个模型，例如：
 
-- `BAAI/bge-m3` 监听 `http://127.0.0.1:8080`
-- `BAAI/bge-reranker-v2-m3` 监听 `http://127.0.0.1:8081`
+- `BAAI/bge-m3`，监听 `http://127.0.0.1:8080`；或者
+- `BAAI/bge-reranker-v2-m3`，监听 `http://127.0.0.1:8080`
 
 浏览器打开 `http://127.0.0.1:8080/health` 能返回，就说明起来了。
 
@@ -35,9 +35,11 @@ copy .env.example .env
 SERVER_URL=nexus.example.com
 WALLET=0x你的钱包地址
 MINER_PRIVATE_KEY=你的私钥
+MODEL=bge-m3
 TEI_URL=http://127.0.0.1:8080
-RERANK_URL=http://127.0.0.1:8081
 ```
+
+跑重排序模型时写 `MODEL=bge-reranker-v2-m3`，并把 `TEI_URL` 换成 `RERANK_URL=http://127.0.0.1:8080`。
 
 ## 4. 启动 / 停止
 
@@ -48,4 +50,4 @@ RERANK_URL=http://127.0.0.1:8081
 
 日志里出现 `miner registered with server` 就表示已上线。
 
-一台机器有多张卡时，每张卡各跑一组 TEI，再给每个 agent 进程配不同的 `NODE_ID` 和 TEI 地址。
+一台机器有多张卡时，每张卡各跑一个 TEI 和一个 agent，每个 agent 配不同的 `NODE_ID`、`MODEL` 和 TEI 地址。

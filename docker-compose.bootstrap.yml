@@ -1,13 +1,15 @@
-# One-time model download. The inference containers normally have no internet
-# access; this override attaches them to the egress network and turns off
-# offline mode so they can fetch the weights into their volumes.
+# One-time model download. The inference container normally has no internet
+# access; this override attaches it to the egress network, turns off offline
+# mode, and keeps the agent from starting.
 #
-#   docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml up -d embeddings reranker
-#   docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml logs -f embeddings reranker
-#   docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml stop
+#   docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml up -d
+#   docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml logs -f
+#   docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml down
 #
 # Do not use this file for normal running.
 services:
+  agent:
+    profiles: ["bootstrap-disabled"]
   embeddings:
     environment:
       HF_HUB_OFFLINE: "0"

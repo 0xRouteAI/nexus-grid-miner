@@ -33,7 +33,7 @@ type Config struct {
 	ProbeTimeoutMS       int
 
 	// Catalog discovery. An empty CATALOG_URL still works: the agent falls back
-	// to ENABLED_MODELS with version 1.0.0.
+	// to MODEL with version 1.0.0.
 	CatalogURL         string
 	CatalogRefreshSecs int
 	VRAMHeadroomMB     uint64
@@ -53,9 +53,22 @@ type Config struct {
 // FromEnv loads configuration and validates it, returning an error instead of
 // exiting so callers can log and shut down cleanly.
 func FromEnv() (*Config, error) {
-	enabled, err := parseModels(envString("ENABLED_MODELS", "bge-m3,bge-reranker-v2-m3"))
+	// One GPU serves exactly one model. ENABLED_MODELS is the old name and is
+	// still read so existing .env files keep working.
+	rawModel := envOptional("MODEL")
+	if rawModel == "" {
+		rawModel = envOptional("ENABLED_MODELS")
+	}
+	if rawModel == "" {
+		return nil, fmt.Errorf("MODEL is required: the one model this GPU serves (bge-m3 or bge-reranker-v2-m3)")
+	}
+	enabled, err := parseModels(rawModel)
 	if err != nil {
 		return nil, err
+	}
+	if len(enabled) != 1 {
+		return nil, fmt.Errorf("MODEL must name exactly one model (one GPU serves one model), got %v; "+
+			"run a separate node for each GPU", enabled)
 	}
 
 	modelEndpoints, err := parseModelEndpoints(envOptional("MODEL_ENDPOINTS"))
@@ -124,10 +137,6 @@ func FromEnv() (*Config, error) {
 	if strings.TrimSpace(cfg.Wallet) == "" {
 		return nil, fmt.Errorf("WALLET must not be empty")
 	}
-	if len(cfg.Enabled) == 0 {
-		return nil, fmt.Errorf(
-			"ENABLED_MODELS must contain at least one of bge-m3,bge-reranker-v2-m3")
-	}
 
 	return cfg, nil
 }
@@ -188,10 +197,10 @@ func parseModels(raw string) ([]string, error) {
 		case "bge-reranker-v2-m3", "bge-reranker", "reranker", "rerank", "cross-encoder":
 			canonical = "bge-reranker-v2-m3"
 		case "kokoro", "tts", "speech", "sdxl", "comfyui", "image", "images":
-			return nil, fmt.Errorf("ENABLED_MODELS: %q is not served by this network yet; "+
+			return nil, fmt.Errorf("MODEL: %q is not served by this network yet; "+
 				"use bge-m3,bge-reranker-v2-m3", normalized)
 		default:
-			return nil, fmt.Errorf("unknown model in ENABLED_MODELS: %q", normalized)
+			return nil, fmt.Errorf("unknown MODEL %q (use bge-m3 or bge-reranker-v2-m3)", normalized)
 		}
 		if !seen[canonical] {
 			seen[canonical] = true
