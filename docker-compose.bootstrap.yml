@@ -1,0 +1,22 @@
+# One-time model download. The inference containers normally have no internet
+# access; this override attaches them to the egress network and turns off
+# offline mode so they can fetch the weights into their volumes.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml up -d embeddings reranker
+#   docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml logs -f embeddings reranker
+#   docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml stop
+#
+# Do not use this file for normal running.
+services:
+  embeddings:
+    environment:
+      HF_HUB_OFFLINE: "0"
+    networks:
+      - inference
+      - egress
+  reranker:
+    environment:
+      HF_HUB_OFFLINE: "0"
+    networks:
+      - inference
+      - egress

@@ -1,0 +1,11 @@
+# Build context is the repository root (agent image).
+.env
+.git
+.gitignore
+logs
+data
+**/*.exe
+**/*.log
+**/*.db
+**/*.db-shm
+**/*.db-wal

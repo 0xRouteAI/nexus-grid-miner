@@ -1,0 +1,22 @@
+# Go build outputs
+agent-go/bin/
+*.exe
+*.test
+
+# Local toolchain downloads
+.tools/
+
+# Local runtime state and secrets
+data/
+logs/
+*.db
+*.db-shm
+*.db-wal
+.env
+
+# Editors / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log

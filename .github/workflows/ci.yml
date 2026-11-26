@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: Go (agent-go)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: agent-go
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.24"
+          cache-dependency-path: agent-go/go.sum
+      - run: go build ./...
+      - run: go vet ./...
+      - run: go test -race ./...
+
+  docker:
+    name: Docker image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env && docker compose config --quiet && docker compose build agent
+        env:
+          TEI_IMAGE: ghcr.io/huggingface/text-embeddings-inference:89-1.10

@@ -1,0 +1,108 @@
+# NEXUS GRID miner: the agent plus two TEI inference containers.
+#
+#   1) once, download model weights:
+#      docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml up -d embeddings reranker
+#      (wait until both log "Ready", then)
+#      docker compose -f docker-compose.yml -f docker-compose.bootstrap.yml stop
+#   2) run:
+#      docker compose up -d --build
+#
+# TEI_IMAGE in .env must match your GPU generation (see README).
+# The reranker only starts when COMPOSE_PROFILES contains "rerank".
+#
+# Only the agent can reach the internet. The TEI containers sit on an
+# internal-only network and serve the agent alone; no port is published.
+services:
+  agent:
+    build:
+      context: .
+      dockerfile: agent-go/Dockerfile
+    image: nexus-grid-miner-agent:latest
+    container_name: nexus-miner-agent
+    init: true
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      TEI_URL: "http://embeddings:80"
+      RERANK_URL: "http://reranker:80"
+      TEI_MODEL_ID: "${TEI_MODEL_ID:-BAAI/bge-m3}"
+      RERANK_MODEL_ID: "${TEI_RERANK_MODEL_ID:-BAAI/bge-reranker-v2-m3}"
+      # nvidia-smi inside the agent needs the driver's utility capability.
+      NVIDIA_DRIVER_CAPABILITIES: "utility"
+    depends_on:
+      embeddings:
+        condition: service_started
+      reranker:
+        condition: service_started
+        required: false
+    # Lets SERVER_URL=http://host.docker.internal:<port> reach a server running
+    # on this same machine. Harmless otherwise.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    networks:
+      - inference
+      - egress
+    deploy:
+      resources:
+        reservations:
+          devices:
+            # GPU visibility lets the agent read the model and VRAM via nvidia-smi.
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  embeddings:
+    # The TEI build must match the GPU generation; pin the tag (better: the digest).
+    image: "${TEI_IMAGE:?Set TEI_IMAGE in .env for your GPU (see README)}"
+    restart: unless-stopped
+    command: ["--model-id", "${TEI_MODEL_ID:-BAAI/bge-m3}", "--port", "80"]
+    environment:
+      HUGGINGFACE_HUB_CACHE: "/data/huggingface"
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-1}"
+    volumes:
+      - tei-data:/data
+    networks:
+      - inference
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  reranker:
+    image: "${TEI_RERANK_IMAGE:-${TEI_IMAGE:?Set TEI_IMAGE in .env for your GPU (see README)}}"
+    profiles: ["rerank"]
+    restart: unless-stopped
+    command: ["--model-id", "${TEI_RERANK_MODEL_ID:-BAAI/bge-reranker-v2-m3}", "--port", "80"]
+    environment:
+      HUGGINGFACE_HUB_CACHE: "/data/huggingface"
+      HF_HUB_OFFLINE: "${HF_HUB_OFFLINE:-1}"
+    volumes:
+      - reranker-data:/data
+    networks:
+      - inference
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+networks:
+  # No default gateway: the inference containers cannot reach the internet.
+  inference:
+    name: nexus-miner-inference
+    internal: true
+  # Outbound access for the agent only.
+  egress:
+    name: nexus-miner-egress
+    driver: bridge
+
+volumes:
+  tei-data:
+    name: nexus-tei-data
+  reranker-data:
+    name: nexus-reranker-data
