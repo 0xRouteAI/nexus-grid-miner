@@ -1,0 +1,1 @@
+{"type":"task","task_id":"task-1","capability":"embedding","model":"bge-m3","version":"1.0.0","backend":"tei-embed","payload":{"model":"bge-m3","input":["hello"]},"deadline_ms":15000}

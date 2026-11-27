@@ -1,0 +1,6 @@
+NEXUS GRID miner registration
+Domain: nexus.example
+Wallet: 0x1111111111111111111111111111111111111111
+Node ID: node-1
+Challenge: abc123challenge
+Issued At: 2026-01-15T12:00:00Z
