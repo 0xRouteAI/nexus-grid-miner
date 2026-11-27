@@ -1,0 +1,1 @@
+{"revision":7,"models":[{"model":{"slug":"bge-m3","capability":"embedding"},"version":{"version":"1.0.0","backend":"tei-embed","model_ref":"BAAI/bge-m3","min_vram_mb":2048,"recommended_vram_mb":4096}}]}
